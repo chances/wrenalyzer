@@ -5,15 +5,29 @@ class Expr is Node {}
 class Stmt is Node {}
 
 class Module is Node {
-  construct new(statements) {
+  construct new(statements, comments) {
     _statements = statements
+    _comments = comments
   }
 
+  comments { _comments }
   statements { _statements }
 
   accept(visitor) { visitor.visitModule(this) }
 
   toString { "Module(%(_statements))" }
+}
+
+class Comment is Node {
+  construct new(value) {
+    _value = value
+  }
+
+  value { _value }
+
+  accept(visitor) { visitor.visitComment(this) }
+
+  toString { "Comment(%(_value))" }
 }
 
 class MapEntryNode {
@@ -29,7 +43,8 @@ class MapEntryNode {
 }
 
 class Method {
-  construct new(foreignKeyword, staticKeyword, constructKeyword, name, body) {
+  construct new(foreignKeyword, staticKeyword, constructKeyword, name, body, comments) {
+    _comments = comments
     _foreignKeyword = foreignKeyword
     _staticKeyword = staticKeyword
     _constructKeyword = constructKeyword
@@ -37,6 +52,7 @@ class Method {
     _body = body
   }
 
+  comments { _comments }
   foreignKeyword { _foreignKeyword }
   staticKeyword { _staticKeyword }
   constructKeyword { _constructKeyword }
@@ -418,11 +434,13 @@ class BlockStmt is Stmt {
 }
 
 class VarStmt is Stmt {
-  construct new(name, initializer) {
+  construct new(name, initializer, comments) {
+    _comments = comments
     _name = name
     _initializer = initializer
   }
 
+  comments { _comments }
   name { _name }
   initializer { _initializer }
 
@@ -519,13 +537,15 @@ class WhileStmt is Stmt {
 }
 
 class ClassStmt is Stmt {
-  construct new(foreignKeyword, name, superclass, methods) {
+  construct new(foreignKeyword, name, superclass, methods, comments) {
+    _comments = comments
     _foreignKeyword = foreignKeyword
     _name = name
     _superclass = superclass
     _methods = methods
   }
 
+  comments { _comments }
   foreignKeyword { _foreignKeyword }
   name { _name }
   superclass { _superclass }

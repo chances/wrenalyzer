@@ -6,6 +6,7 @@ import "./ast" for
     BreakStmt,
     CallExpr,
     ClassStmt,
+    Comment,
     ConditionalExpr,
     ContinueStmt,
     FieldExpr,
@@ -114,27 +115,32 @@ class Parser {
 
     ignoreLine()
 
+    var comments = consumeComments()
     var statements = []
     while (peek() != Token.eof) {
-      statements.add(definition())
+      var inlineComments = consumeComments()
+      // Module ends with comments
+      if (peek() == Token.eof) break
+
+      statements.add(definition(inlineComments))
 
       if (peek() == Token.eof) break
       consumeLine("Expect newline.")
     }
 
     consume(Token.eof, "Expect end of input.")
-    return Module.new(statements)
+    return Module.new(comments, statements)
   }
 
-  definition() {
+  definition(comments) {
     if (match(Token.classKeyword)) {
-      return finishClass(null)
+      return finishClass(comments, null)
     }
 
     if (match(Token.foreignKeyword)) {
       var foreignKeyword = _previous
       consume(Token.classKeyword, "Expect 'class' after 'foreign'.")
-      return finishClass(foreignKeyword)
+      return finishClass(comments, foreignKeyword)
     }
 
     if (match(Token.importKeyword)) {
@@ -171,14 +177,14 @@ class Parser {
         initializer = expression()
       }
 
-      return VarStmt.new(name, initializer)
+      return VarStmt.new(name, initializer, comments)
     }
 
     return statement()
   }
 
   // Parses the rest of a class definition after the "class" token.
-  finishClass(foreignKeyword) {
+  finishClass(comments, foreignKeyword) {
     var name = consume(Token.name, "Expect class name.")
 
     var superclass
@@ -201,10 +207,12 @@ class Parser {
       consumeLine("Expect newline after definition in class.")
     }
 
-    return ClassStmt.new(foreignKeyword, name, superclass, methods)
+    return ClassStmt.new(foreignKeyword, name, superclass, methods, comments)
   }
 
   method() {
+    var comments = consumeComments()
+
     // Note: This parses more permissively than the grammar actually is. For
     // example, it will allow "static construct *()". We'll report errors on
     // invalid forms later.
@@ -268,7 +276,7 @@ class Parser {
       body = finishBody(parameters)
     }
 
-    return Method.new(foreignKeyword, staticKeyword, constructKeyword, name, body)
+    return Method.new(foreignKeyword, staticKeyword, constructKeyword, name, body, comments)
   }
 
   statement() {
@@ -335,7 +343,11 @@ class Parser {
       ignoreLine()
 
       while (peek() != Token.rightBrace && peek() != Token.eof) {
-        statements.add(definition())
+        var comments = consumeComments()
+        // Block ends with comments
+        if (comments.count > 0 && peek() == Token.rightBrace) break
+
+        statements.add(definition(comments))
 
         // Don't require a newline after the last statement.
         if (peek() == Token.rightBrace) break
@@ -353,6 +365,8 @@ class Parser {
 
   // Parses the rest of a method or block argument body.
   finishBody(parameters) {
+    ignoreComments()
+
     // An empty block.
     if (match(Token.rightBrace)) return Body.new(parameters, null, [])
 
@@ -369,7 +383,11 @@ class Parser {
 
     var statements = []
     while (peek() != Token.eof) {
-      statements.add(definition())
+      var comments = consumeComments()
+      // Block ends with comments
+      if (comments.count > 0 && match(Token.rightBrace)) break
+
+      statements.add(definition(comments))
       consumeLine("Expect newline after statement.")
 
       if (match(Token.rightBrace)) break
@@ -580,6 +598,7 @@ class Parser {
     // TODO: Token.super.
 
     error("Expect expression.")
+
     // Make a fake node so that we don't have to worry about null later.
     // TODO: Should this be an error node?
     return NullExpr.new(_previous)
@@ -716,14 +735,38 @@ class Parser {
     return true
   }
 
+  // Consumes zero or more comments. Returns `true` if at least one was matched.
+  matchComment() {
+    if (peek() != Token.comment) return false
+    while (match(Token.comment)) {
+      matchLine()
+    }
+
+    return true
+  }
+
   // Same as [matchLine()], but makes it clear that the intent is to discard
   // newlines appearing where this is called.
   ignoreLine() { matchLine() }
+
+  // Same as [matchComment()], but makes it clear that the intent is to discard
+  // comments appearing where this is called.
+  ignoreComments() { matchComment() }
 
   // Consumes one or more newlines.
   consumeLine(error) {
     consume(Token.line, error)
     ignoreLine()
+  }
+
+  // Consumes zero or more comments.
+  consumeComments() {
+    var comments = []
+    while (peek() == Token.comment) {
+      comments.add(Comment.new(consume(Token.comment, "Expect a comment.")))
+      if (peek() == Token.line) ignoreLine()
+    }
+    return comments
   }
 
   // Reads and consumes the next token.

@@ -1,12 +1,20 @@
 /// Base visitor class that walks the entire AST.
 class RecursiveVisitor {
   visitModule(node) {
+    for (comment in node.comments) {
+      comment.accept(this)
+    }
     for (statement in node.statements) {
       statement.accept(this)
     }
   }
 
+  visitComment(node) {}
+
   visitMethod(node) {
+    for (comment in node.comments) {
+      comment.accept(this)
+    }
     // Foreign methods do not have a body.
     if (node.body != null) node.body.accept(this)
   }
@@ -120,6 +128,9 @@ class RecursiveVisitor {
   visitContinueStmt(node) {}
 
   visitClassStmt(node) {
+    for (comment in node.comments) {
+      comment.accept(this)
+    }
     for (method in node.methods) {
       method.accept(this)
     }
@@ -143,6 +154,9 @@ class RecursiveVisitor {
   }
 
   visitVarStmt(node) {
+    for (comment in node.comments) {
+      comment.accept(this)
+    }
     if (node.initializer != null) node.initializer.accept(this)
   }
 

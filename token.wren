@@ -58,6 +58,7 @@ class Token {
   static varKeyword { "var" }
   static whileKeyword { "while" }
 
+  static comment { "comment" }
   static field { "field" }
   static staticField { "staticField" }
   static name { "name" }

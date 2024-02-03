@@ -73,9 +73,11 @@ class Lexer {
   readToken() {
     if (_current >= _source.count) return makeToken(Token.eof)
 
-    skipWhitespace()
-
-    // TODO: Skip comments.
+    var comments = skipWhitespace()
+    if (comments.count > 0) {
+      var length = comments.reduce(0) {|acc, comment| acc + comment.length }
+      return Token.new(_source, Token.comment, comments[0].start, length)
+    }
 
     _start = _current
     var c = _source[_current]
@@ -137,6 +139,7 @@ class Lexer {
 
   // Skips over whitespace and comments.
   skipWhitespace() {
+    var comments = []
     while (true) {
       var c = peek()
       if (c == Chars.tab || c == Chars.carriageReturn || c == Chars.space) {
@@ -147,6 +150,7 @@ class Lexer {
         while (peek() != Chars.lineFeed && !isAtEnd) {
           advance()
         }
+        comments.add(makeToken(Token.comment))
       } else if (c == Chars.slash && peek(1) == Chars.star) {
         advance()
         advance()
@@ -165,7 +169,10 @@ class Lexer {
             advance()
             advance()
             nesting = nesting - 1
-            if (nesting == 0) break
+            if (nesting == 0) {
+              comments.add(makeToken(Token.comment))
+              break
+            }
           } else {
             advance()
           }
@@ -174,6 +181,7 @@ class Lexer {
         break
       }
     }
+    return comments
   }
 
   // Reads a static or instance field.

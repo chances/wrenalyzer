@@ -17,6 +17,8 @@ class Resolver is RecursiveVisitor {
     _scope.checkForwardReferences()
   }
 
+//  visitComment(node) { super(node) }
+
 //  visitMethod(node) { super(node) }
 
   visitBody(node) {
